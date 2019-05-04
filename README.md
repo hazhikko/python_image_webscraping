@@ -13,7 +13,7 @@ Python 3.7で動作確認済み
 ### ファイルの配置
 Anacondaで仮想環境を作成した場合
 
-/Anaconda3/envs/【作成した環境名】/[src](https://github.com/hazhikko/python_image_webscraping/tree/master/src)/
+/Anaconda3/envs/【作成した環境名】/[src](https://github.com/hazhikko/python_image_webscraping/tree/master/src)/  
 /Anaconda3/envs/【作成した環境名】/Lib/site-packages/[importpath.pth](https://github.com/hazhikko/python_image_webscraping/blob/master/Lib/site-packages/importpath.pth)
 ### ファイルの修正
 #### [importpath.pth](https://github.com/hazhikko/python_image_webscraping/blob/master/Lib/site-packages/importpath.pth)
