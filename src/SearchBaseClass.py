@@ -158,9 +158,11 @@ class ImageClass:
         Arguments:
             keyword {str} -- [description]
             url_list {list} -- [description]
+        
         Raises:
-
-
+            ValueError -- HTTP statusが200以外だった場合
+            TypeError -- Content-Typeが画像以外だった場合
+        
         Returns:
             dict -- ダウンロードの結果
         """
