@@ -88,7 +88,7 @@ class ImageClass:
         print(INFO_MESSAGE['common_info_002'])
         return result
     
-    def redundant_image_check(self, tmp_image, save_dir):
+    def check_redundant_image(self, tmp_image, save_dir):
         """ダウンロードした画像と同じ画像があるかチェックする
         
         Arguments:
@@ -216,7 +216,7 @@ class ImageClass:
                     with open(tmpPath, mode = 'wb') as f:
                         f.write(response.content)
                     # 同じファイルがあればスキップする
-                    skip_file = self.redundant_image_check(tmpPath, save_dir)
+                    skip_file = self.check_redundant_image(tmpPath, save_dir)
                     if skip_file != '':
                         print(ERROR_MESSAGE['common_err_002'])
                         result.setdefault('download_skip', []).append(skip_file)
