@@ -32,7 +32,7 @@ Anacondaで仮想環境を作成した場合
 `python SearchEngineClass.py google 猫 10`
 →Google画像検索で猫を検索し、画像を10枚ダウンロードする
 
-`python SearchEngineClass.py bing '猫 黒い' 100`
+`python SearchEngineClass.py bing "猫 黒い" 100`
 →2つのキーワードを使用し、bingから画像を100枚ダウンロードする
 ### 注意
 検索時にライセンスのフィルターをかけているため、版権系の画像はほとんどヒットしないと思われる  

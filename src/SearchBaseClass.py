@@ -148,6 +148,7 @@ class ImageClass:
             dict -- ダウンロードの結果
         """
         print(INFO_MESSAGE['common_info_003'])
+        keyword = keyword.replace(' ', '_').replace('　', '_')
         save_dir = DATA_DIR + '/' + keyword
         tmp_dir = DATA_DIR + '/' + 'tmp'
         os.makedirs(DATA_DIR, exist_ok=True)
