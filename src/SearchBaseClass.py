@@ -1,5 +1,5 @@
 # coding: utf-8
-import os, os.path, sys, json, glob, urllib, pprint, glob, hashlib, shutil, time
+import os, os.path, sys, json, glob, urllib, urllib.robotparser, pprint, glob, hashlib, shutil, time
 import requests
 from requests.exceptions import Timeout
 from bs4 import BeautifulSoup
@@ -135,6 +135,22 @@ class ImageClass:
         else:
             return 1
     
+    def check_access_permissions(self, url):
+        """robots.txtを読んでアクセス権限を返却する
+        
+        Arguments:
+            url {str} -- チェック対象のURL
+        
+        Returns:
+            boolean -- 許可：True/不可：False
+        """
+        domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
+        robot_url = domain + 'robots.txt'
+        rp = urllib.robotparser.RobotFileParser()
+        rp.set_url(robot_url)
+        rp.read()
+        return rp.can_fetch('*', url)
+    
     def download_file(self, keyword, url_list):
         """リスト内の画像をローカルに保存する
         
@@ -158,6 +174,11 @@ class ImageClass:
         result = {}
         domain = ''
         for i in range(len(url_list)):
+            # スクレイピングが許可されているかチェック
+            if not self.check_access_permissions(url_list[i]):
+                print(ERROR_MESSAGE['common_err_008'])
+                result.setdefault('download_error', []).append(url_list[i])
+                continue
             # ファイル名用の連番を取得
             num = self.get_file_num(save_dir)
             # ファイル名とパスを作成
