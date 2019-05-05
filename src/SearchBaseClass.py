@@ -51,6 +51,7 @@ class ImageClass:
                 'tbs':'sur:fc',
                 'ijn':str(page)})
             yield SEARCH_URL[site] + '?' + params
+            time.sleep(1)
             page += 1
     
     def image_search(self, query_gen, maximum):
