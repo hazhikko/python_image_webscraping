@@ -3,7 +3,7 @@ import os, os.path, sys, json, glob, urllib, urllib.robotparser, pprint, glob, h
 import requests
 from requests.exceptions import Timeout
 from bs4 import BeautifulSoup
-from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT, DATA_DIR
+from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT, DATA_DIR, DISK_FREE_REFERENCE_VALUE
 from common.CommonConst import INFO_MESSAGE, ERROR_MESSAGE
 
 class ImageClass:
@@ -88,6 +88,21 @@ class ImageClass:
         print(INFO_MESSAGE['common_info_002'])
         return result
     
+    def check_disk_usage(self, path):
+        """ディスクの空き/使用容量の割合を返却する
+        
+        Arguments:
+            path {str} -- チェック対象のディスクのパス
+        
+        Returns:
+            list {int} -- 空き率, 使用率
+        """
+        disk_total = int(shutil.disk_usage(path).total / 1024 /1024)
+        disk_free = int(shutil.disk_usage(path).free / 1024 /1024)
+        free_percentage = int(disk_free / disk_total * 100)
+        used_percentage = 100 - free_percentage
+        return [free_percentage, used_percentage]
+
     def check_redundant_image(self, tmp_image, save_dir):
         """ダウンロードした画像と同じ画像があるかチェックする
         
@@ -188,8 +203,10 @@ class ImageClass:
             fName = os.path.basename(url_list[i])
             fPath = save_dir + '/' + str(num).zfill(5) + os.path.splitext(fName)[1]
             tmpPath = tmp_dir + '/' + str(num).zfill(5) + os.path.splitext(fName)[1]
-            # 画像の拡張子を取得
-            # ext = os.path.splitext(fName)[1][1:]
+            # 保存先のディスクの空き容量が基準値を下回っていたら処理を終了する
+            if self.check_disk_usage(save_dir)[0] < DISK_FREE_REFERENCE_VALUE:
+                print(INFO_MESSAGE['common_info_005'].format(DISK_FREE_REFERENCE_VALUE))
+                break
             # 画像のみダウンロード
             if os.path.splitext(fName)[1][1:] not in IMG_EXT:
                 print(ERROR_MESSAGE['common_err_001'])

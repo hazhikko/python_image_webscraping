@@ -19,11 +19,13 @@ UA = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 IMG_EXT = ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'tiff']
 # WindowsとUnixでセパレータが異なるため、/で統一する
 DATA_DIR = os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '../../../download/image').replace('\\', '/')
+DISK_FREE_REFERENCE_VALUE = 20
 INFO_MESSAGE = {
     'common_info_001':'画像URLの収集を開始します',
     'common_info_002':'画像URLの収集が完了しました',
     'common_info_003':'ダウンロードを開始します',
-    'common_info_004':'ダウンロードが完了しました'
+    'common_info_004':'ダウンロードが完了しました',
+    'common_info_005':'ディスクの空き容量が{0}%を下回ったため、処理を終了します'
 }
 ERROR_MESSAGE = {
     'common_err_001':'画像以外のファイルです',
