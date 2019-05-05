@@ -1,5 +1,5 @@
 # coding: utf-8
-import os, os.path, sys, json, glob, urllib, pprint, glob, hashlib, shutil
+import os, os.path, sys, json, glob, urllib, pprint, glob, hashlib, shutil, time
 import requests
 from requests.exceptions import Timeout
 from bs4 import BeautifulSoup
@@ -156,6 +156,7 @@ class ImageClass:
         os.makedirs(tmp_dir, exist_ok=True)
 
         result = {}
+        domain = ''
         for i in range(len(url_list)):
             # ファイル名用の連番を取得
             num = self.get_file_num(save_dir)
@@ -172,6 +173,10 @@ class ImageClass:
                 continue
             else:
                 try:
+                    # 同じドメインからURLを取得する場合はスリープ
+                    if domain == '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i])):
+                        time.sleep(1)
+                    domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i]))
                     # サイトからデータ取得
                     response = self.session.get(url_list[i], proxies = PROXIES, timeout = CONNECT_TIMEOUT)
                     if response.status_code != 200:
