@@ -168,11 +168,14 @@ class ImageClass:
             boolean -- 許可：True/不可：False
         """
         domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
-        robot_url = domain + 'robots.txt'
-        rp = urllib.robotparser.RobotFileParser()
-        rp.set_url(robot_url)
-        rp.read()
-        return rp.can_fetch('*', url)
+        try:
+            robot_url = domain + 'robots.txt'
+            rp = urllib.robotparser.RobotFileParser()
+            rp.set_url(robot_url)
+            rp.read()
+            return rp.can_fetch('*', url)
+        except:
+            return False
     
     def download_file(self, keyword, url_list):
         """リスト内の画像をローカルに保存する
