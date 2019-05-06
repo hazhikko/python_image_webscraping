@@ -259,6 +259,9 @@ class ImageClass:
                     traceback.print_exc()
                     continue
         print(INFO_MESSAGE['common_info_004'])
+        print(INFO_MESSAGE['common_info_006'].format(len(result['download']) if 'download' in result else 0))
+        print(INFO_MESSAGE['common_info_007'].format(len(result['download_error']) if 'download_error' in result else 0))
+        print(INFO_MESSAGE['common_info_008'].format(len(result['download_skip']) if 'download_skip' in result else 0))
         return result
 
 
