@@ -28,7 +28,8 @@ INFO_MESSAGE = {
     'common_info_005':'ディスクの空き容量が{0}%を下回ったため、処理を終了します',
     'common_info_006':'ダウンロード成功:{0}件',
     'common_info_007':'ダウンロード失敗:{0}件',
-    'common_info_008':'重複画像:{0}件'
+    'common_info_008':'重複画像:{0}件',
+    'common_info_009':'取得画像が足りないため、再検索します',
 }
 ERROR_MESSAGE = {
     'common_err_001':'画像以外のファイルです',
