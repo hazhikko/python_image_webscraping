@@ -86,12 +86,26 @@ class ImageClass:
             if not len(imageURLs):
                 print(ERROR_MESSAGE['common_err_006'])
                 sys.exit()
-            elif len(imageURLs) > maximum - total:
-                result += imageURLs
-                break
             else:
-                result += imageURLs
-                total += len(imageURLs)
+                # URLの形式をチェックする
+                delete_list = []
+                for i, url in enumerate(imageURLs):
+                    # パラメータがついている場合は削除する
+                    split_url = url.split('?')[0]
+                    ext = os.path.splitext(split_url)[1][1:]
+                    if any(ext == s for s in IMG_EXT):
+                        imageURLs[i] = split_url
+                    else:
+                        # 画像ではない場合リストから削除する
+                        delete_list.append(url)
+                if len(delete_list):
+                    [imageURLs.remove(del_url) for del_url in delete_list]
+                if len(imageURLs) > maximum - total:
+                    result += imageURLs
+                    break
+                else:
+                    result += imageURLs
+                    total += len(imageURLs)
         print(INFO_MESSAGE['common_info_002'])
         return result
     
@@ -222,57 +236,51 @@ class ImageClass:
             if self.check_disk_usage(save_dir)[0] < DISK_FREE_REFERENCE_VALUE:
                 print(INFO_MESSAGE['common_info_005'].format(DISK_FREE_REFERENCE_VALUE))
                 break
-            # 画像のみダウンロード
-            if os.path.splitext(fName)[1][1:] not in IMG_EXT:
+            try:
+                # 同じドメインからURLを取得する場合はスリープ
+                if domain == '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i])):
+                    time.sleep(1)
+                domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i]))
+                # サイトからデータ取得
+                response = self.session.get(url_list[i], proxies = PROXIES, timeout = CONNECT_TIMEOUT)
+                if response.status_code != 200:
+                    e = ValueError("HTTP status: " + response.status_code)
+                    raise e
+                
+                content_type = response.headers['content-type']
+                if 'image' not in content_type:
+                    e = TypeError("Content-Type: " + content_type)
+                    raise e
+                
+                # ファイルをローカルに保存
+                with open(tmpPath, mode = 'wb') as f:
+                    f.write(response.content)
+                # 同じファイルがあればスキップする
+                skip_file = self.check_redundant_image(tmpPath, save_dir)
+                if skip_file != '':
+                    print(ERROR_MESSAGE['common_err_002'])
+                    self.result.setdefault('download_skip', []).append(skip_file)
+                    continue
+                self.result.setdefault('download', []).append(fPath)
+            except requests.exceptions.ConnectTimeout:
+                print(ERROR_MESSAGE['common_err_003'])
+                self.result.setdefault('download_error', []).append(url_list[i])
+                continue
+            except ValueError:
+                print(ERROR_MESSAGE['common_err_005'])
+                self.result.setdefault('download_error', []).append(url_list[i])
+                continue
+            except TypeError:
                 print(ERROR_MESSAGE['common_err_001'])
                 self.result.setdefault('download_error', []).append(url_list[i])
                 continue
-            else:
-                try:
-                    # 同じドメインからURLを取得する場合はスリープ
-                    if domain == '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i])):
-                        time.sleep(1)
-                    domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i]))
-                    # サイトからデータ取得
-                    response = self.session.get(url_list[i], proxies = PROXIES, timeout = CONNECT_TIMEOUT)
-                    if response.status_code != 200:
-                        e = ValueError("HTTP status: " + response.status_code)
-                        raise e
-                    
-                    content_type = response.headers['content-type']
-                    if 'image' not in content_type:
-                        e = TypeError("Content-Type: " + content_type)
-                        raise e
-                    
-                    # ファイルをローカルに保存
-                    with open(tmpPath, mode = 'wb') as f:
-                        f.write(response.content)
-                    # 同じファイルがあればスキップする
-                    skip_file = self.check_redundant_image(tmpPath, save_dir)
-                    if skip_file != '':
-                        print(ERROR_MESSAGE['common_err_002'])
-                        self.result.setdefault('download_skip', []).append(skip_file)
-                        continue
-                    self.result.setdefault('download', []).append(fPath)
-                except requests.exceptions.ConnectTimeout:
-                    print(ERROR_MESSAGE['common_err_003'])
-                    self.result.setdefault('download_error', []).append(url_list[i])
-                    continue
-                except ValueError:
-                    print(ERROR_MESSAGE['common_err_005'])
-                    self.result.setdefault('download_error', []).append(url_list[i])
-                    continue
-                except TypeError:
-                    print(ERROR_MESSAGE['common_err_001'])
-                    self.result.setdefault('download_error', []).append(url_list[i])
-                    continue
-                except:
-                    print(ERROR_MESSAGE['common_err_999'])
-                    self.result.setdefault('download_error', []).append(url_list[i])
+            except:
+                print(ERROR_MESSAGE['common_err_999'])
+                self.result.setdefault('download_error', []).append(url_list[i])
 
-                    import traceback
-                    traceback.print_exc()
-                    continue
+                import traceback
+                traceback.print_exc()
+                continue
         # ダウンロード成功数が足りなければリトライする
         try:
             if len(self.result['download']) < self.maximum:
