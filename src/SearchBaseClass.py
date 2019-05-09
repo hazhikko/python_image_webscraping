@@ -184,6 +184,9 @@ class ImageClass:
         domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
         try:
             robot_url = domain + 'robots.txt'
+            proxy = urllib.request.ProxyHandler(PROXIES)
+            opener = urllib.request.build_opener(proxy)
+            urllib.request.install_opener(opener)
             rp = urllib.robotparser.RobotFileParser()
             rp.set_url(robot_url)
             rp.read()
