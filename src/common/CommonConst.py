@@ -28,7 +28,9 @@ INFO_MESSAGE = {
     'common_info_005':'ディスクの空き容量が{0}%を下回ったため、処理を終了します',
     'common_info_006':'ダウンロード成功:{0}件',
     'common_info_007':'ダウンロード失敗:{0}件',
-    'common_info_008':'重複画像:{0}件'
+    'common_info_008':'重複画像:{0}件',
+    'common_info_009':'取得画像が足りないため、再検索します',
+    'common_info_010':'検索結果が0件だったため、処理を終了します',
 }
 ERROR_MESSAGE = {
     'common_err_001':'画像以外のファイルです',
@@ -36,7 +38,7 @@ ERROR_MESSAGE = {
     'common_err_003':'タイムアウトしました',
     'common_err_004':'対象外の検索サイトが指定されたため、Googleで検索を行います',
     'common_err_005':'サイトに接続できませんでした',
-    'common_err_006':'検索結果が0件でした',
+    # 'common_err_006':'',
     'common_err_007':'パラメータが不足しています [検索サイト(google or bing)] [検索キーワード] [取得枚数]',
     'common_err_008':'スクレイピングが禁止されています',
     'common_err_999':'エラーが発生しました'

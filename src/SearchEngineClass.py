@@ -10,6 +10,7 @@ class SearchGoogleClass(SearchBaseClass.ImageClass):
 
 class SearchBingClass(SearchBaseClass.ImageClass):
     item_count = 0
+    item = 0
 
     def query_gen(self, site, keyword):
         """検索用のURLを作成する
@@ -24,15 +25,14 @@ class SearchBingClass(SearchBaseClass.ImageClass):
         # 'q':keyword,                      検索キーワード
         # 'qft':'+filterui:license-L1',     ライセンス指定(license-L1=パブリックドメイン)
         # 'first':str(item)                 ページの先頭に表示する画像を指定する
-        item = 0
         while True:
             params = urllib.parse.urlencode({
                 'q':keyword,
-                'qft':'+filterui:license-L1',
-                'first':str(item)})
+                # 'qft':'+filterui:license-L1',
+                'first':str(self.item)})
+            self.item += self.item_count
             yield SEARCH_URL[site] + '?' + params
             time.sleep(1)
-            item += self.item_count
     
     def image_search(self, query_gen, maximum):
         """検索サイトで画像を検索し、画像のURLを収集する
@@ -59,7 +59,7 @@ class SearchBingClass(SearchBaseClass.ImageClass):
                 print(ERROR_MESSAGE['common_err_006'])
                 sys.exit()
             elif len(imageURLs) > maximum - total:
-                result += imageURLs[:maximum - total]
+                result += imageURLs
                 break
             else:
                 result += imageURLs

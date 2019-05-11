@@ -10,6 +10,11 @@ class ImageClass:
     def __init__(self):
         self.session = requests.session()
         self.session.headers.update(UA)
+        self.site = ''
+        self.keyword = ''
+        self.maximum = 0
+        self.page = 0
+        self.result = {}
     
     def search(self, site, keyword, maximum):
         """画像の検索とダウンロード処理を行う
@@ -22,6 +27,9 @@ class ImageClass:
         Returns:
             object -- ダウンロード結果
         """
+        self.site = site
+        self.keyword = keyword
+        self.maximum = maximum
         if site not in SEARCH_URL:
             print(ERROR_MESSAGE['common_err_004'])
             site = 'google'
@@ -43,16 +51,15 @@ class ImageClass:
         # 'tbm':'isch',     検索種類(isch=画像検索)
         # 'tbs':'sur:fc',   ライセンス指定(sur:fc=再使用が許可された画像)
         # 'ijn':str(page)   指定したページを表示する
-        page = 0
         while True:
             params = urllib.parse.urlencode({
                 'q':keyword,
                 'tbm':'isch',
-                'tbs':'sur:fc',
-                'ijn':str(page)})
+                # 'tbs':'sur:fc',
+                'ijn':str(self.page)})
+            self.page += 1
             yield SEARCH_URL[site] + '?' + params
             time.sleep(1)
-            page += 1
     
     def image_search(self, query_gen, maximum):
         """検索サイトで画像を検索し、画像のURLを収集する
@@ -62,7 +69,7 @@ class ImageClass:
             maximum {int} -- 取得したい画像の数
         
         Returns:
-            list -- 画像URLのリスト
+            list -- 画像URLのリスト/検索結果が0件だった場合は空List
         """
         print(INFO_MESSAGE['common_info_001'])
         result = []
@@ -75,16 +82,29 @@ class ImageClass:
             imageURLs = [js['ou'] for js in jsons]
 
             # 取得枚数がmaximumに達するまでクエリを再作成して取得を繰り返す
-            # 検索結果が0件だった場合は処理を終了する
             if not len(imageURLs):
-                print(ERROR_MESSAGE['common_err_006'])
-                sys.exit()
-            elif len(imageURLs) > maximum - total:
-                result += imageURLs[:maximum - total]
-                break
+                print(INFO_MESSAGE['common_info_010'])
+                return []
             else:
-                result += imageURLs
-                total += len(imageURLs)
+                # URLの形式をチェックする
+                delete_list = []
+                for i, url in enumerate(imageURLs):
+                    # パラメータがついている場合は削除する
+                    split_url = url.split('?')[0]
+                    ext = os.path.splitext(split_url)[1][1:]
+                    if any(ext == s for s in IMG_EXT):
+                        imageURLs[i] = split_url
+                    else:
+                        # 画像ではない場合リストから削除する
+                        delete_list.append(url)
+                if len(delete_list):
+                    [imageURLs.remove(del_url) for del_url in delete_list]
+                if len(imageURLs) > maximum - total:
+                    result += imageURLs
+                    break
+                else:
+                    result += imageURLs
+                    total += len(imageURLs)
         print(INFO_MESSAGE['common_info_002'])
         return result
     
@@ -161,11 +181,40 @@ class ImageClass:
             boolean -- 許可：True/不可：False
         """
         domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
-        robot_url = domain + 'robots.txt'
-        rp = urllib.robotparser.RobotFileParser()
-        rp.set_url(robot_url)
-        rp.read()
-        return rp.can_fetch('*', url)
+        try:
+            robot_url = domain + 'robots.txt'
+            proxy = urllib.request.ProxyHandler(PROXIES)
+            opener = urllib.request.build_opener(proxy)
+            urllib.request.install_opener(opener)
+            rp = urllib.robotparser.RobotFileParser()
+            rp.set_url(robot_url)
+            rp.read()
+            return rp.can_fetch('*', url)
+        except:
+            return False
+    
+    def check_download_continue(self, url_list, save_dir):
+        """ダウンロードを継続するかチェックする
+        
+        Arguments:
+            url_list {list} -- 画像URLのリスト
+            save_dir {str} -- 画像の保存ディレクトリパス
+        
+        Returns:
+            boolean -- 継続：True/終了：False
+        """
+        # 取得する画像がない
+        if not len(url_list):
+            print(INFO_MESSAGE['common_info_010'])
+            return False
+        # ダウンロード成功数が取得枚数に到達
+        if 'download' in self.result and len(self.result['download']) == self.maximum:
+            return False
+        # 保存先のディスクの空き容量が基準値以下
+        if self.check_disk_usage(save_dir)[0] < DISK_FREE_REFERENCE_VALUE:
+            print(INFO_MESSAGE['common_info_005'].format(DISK_FREE_REFERENCE_VALUE))
+            return False
+        return True
     
     def download_file(self, keyword, url_list):
         """リスト内の画像をローカルに保存する
@@ -189,80 +238,84 @@ class ImageClass:
         os.makedirs(save_dir, exist_ok=True)
         os.makedirs(tmp_dir, exist_ok=True)
 
-        result = {}
         domain = ''
-        for i in range(len(url_list)):
+        for i, url in enumerate(url_list):
+            # 処理を継続するかチェックする
+            if not self.check_download_continue(url_list, save_dir):
+                break
             # スクレイピングが許可されているかチェック
-            if not self.check_access_permissions(url_list[i]):
+            if not self.check_access_permissions(url):
                 print(ERROR_MESSAGE['common_err_008'])
-                result.setdefault('download_error', []).append(url_list[i])
+                self.result.setdefault('download_error', []).append(url)
                 continue
             # ファイル名用の連番を取得
             num = self.get_file_num(save_dir)
             # ファイル名とパスを作成
-            fName = os.path.basename(url_list[i])
+            fName = os.path.basename(url)
             fPath = save_dir + '/' + str(num).zfill(5) + os.path.splitext(fName)[1]
             tmpPath = tmp_dir + '/' + str(num).zfill(5) + os.path.splitext(fName)[1]
-            # 保存先のディスクの空き容量が基準値を下回っていたら処理を終了する
-            if self.check_disk_usage(save_dir)[0] < DISK_FREE_REFERENCE_VALUE:
-                print(INFO_MESSAGE['common_info_005'].format(DISK_FREE_REFERENCE_VALUE))
-                break
-            # 画像のみダウンロード
-            if os.path.splitext(fName)[1][1:] not in IMG_EXT:
-                print(ERROR_MESSAGE['common_err_001'])
-                result.setdefault('download_error', []).append(url_list[i])
+            try:
+                # 同じドメインからURLを取得する場合はスリープ
+                if domain == '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url)):
+                    time.sleep(1)
+                domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
+                # サイトからデータ取得
+                response = self.session.get(url, proxies = PROXIES, timeout = CONNECT_TIMEOUT)
+                if response.status_code != 200:
+                    e = ValueError("HTTP status: " + response.status_code)
+                    raise e
+                
+                content_type = response.headers['content-type']
+                if 'image' not in content_type:
+                    e = TypeError("Content-Type: " + content_type)
+                    raise e
+                
+                # ファイルをローカルに保存
+                with open(tmpPath, mode = 'wb') as f:
+                    f.write(response.content)
+                # 同じファイルがあればスキップする
+                skip_file = self.check_redundant_image(tmpPath, save_dir)
+                if skip_file != '':
+                    print(ERROR_MESSAGE['common_err_002'])
+                    self.result.setdefault('download_skip', []).append(skip_file)
+                    continue
+                self.result.setdefault('download', []).append(fPath)
+            except requests.exceptions.ConnectTimeout:
+                print(ERROR_MESSAGE['common_err_003'])
+                self.result.setdefault('download_error', []).append(url)
                 continue
-            else:
-                try:
-                    # 同じドメインからURLを取得する場合はスリープ
-                    if domain == '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i])):
-                        time.sleep(1)
-                    domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url_list[i]))
-                    # サイトからデータ取得
-                    response = self.session.get(url_list[i], proxies = PROXIES, timeout = CONNECT_TIMEOUT)
-                    if response.status_code != 200:
-                        e = ValueError("HTTP status: " + response.status_code)
-                        raise e
-                    
-                    content_type = response.headers['content-type']
-                    if 'image' not in content_type:
-                        e = TypeError("Content-Type: " + content_type)
-                        raise e
-                    
-                    # ファイルをローカルに保存
-                    with open(tmpPath, mode = 'wb') as f:
-                        f.write(response.content)
-                    # 同じファイルがあればスキップする
-                    skip_file = self.check_redundant_image(tmpPath, save_dir)
-                    if skip_file != '':
-                        print(ERROR_MESSAGE['common_err_002'])
-                        result.setdefault('download_skip', []).append(skip_file)
-                        continue
-                    result.setdefault('download', []).append(fPath)
-                except requests.exceptions.ConnectTimeout:
-                    print(ERROR_MESSAGE['common_err_003'])
-                    result.setdefault('download_error', []).append(url_list[i])
-                    continue
-                except ValueError:
-                    print(ERROR_MESSAGE['common_err_005'])
-                    result.setdefault('download_error', []).append(url_list[i])
-                    continue
-                except TypeError:
-                    print(ERROR_MESSAGE['common_err_001'])
-                    result.setdefault('download_error', []).append(url_list[i])
-                    continue
-                except:
-                    print(ERROR_MESSAGE['common_err_999'])
-                    result.setdefault('download_error', []).append(url_list[i])
+            except ValueError:
+                print(ERROR_MESSAGE['common_err_005'])
+                self.result.setdefault('download_error', []).append(url)
+                continue
+            except TypeError:
+                print(ERROR_MESSAGE['common_err_001'])
+                self.result.setdefault('download_error', []).append(url)
+                continue
+            except:
+                print(ERROR_MESSAGE['common_err_999'])
+                self.result.setdefault('download_error', []).append(url)
 
-                    import traceback
-                    traceback.print_exc()
-                    continue
+                import traceback
+                traceback.print_exc()
+                continue
+        # 取得する画像がない場合は終了する
+        if not self.check_download_continue(url_list, save_dir):
+            pass
+        # ダウンロード成功数が足りなければリトライする
+        elif 'download' in self.result and len(self.result['download']) < self.maximum:
+            print(INFO_MESSAGE['common_info_009'])
+            self.maximum = self.maximum - len(self.result['download'])
+            self.search(self.site, self.keyword, self.maximum)
+        elif 'download' not in self.result:
+            self.search(self.site, self.keyword, self.maximum)
+        else:
+            pass
         print(INFO_MESSAGE['common_info_004'])
-        print(INFO_MESSAGE['common_info_006'].format(len(result['download']) if 'download' in result else 0))
-        print(INFO_MESSAGE['common_info_007'].format(len(result['download_error']) if 'download_error' in result else 0))
-        print(INFO_MESSAGE['common_info_008'].format(len(result['download_skip']) if 'download_skip' in result else 0))
-        return result
+        print(INFO_MESSAGE['common_info_006'].format(len(self.result['download']) if 'download' in self.result else 0))
+        print(INFO_MESSAGE['common_info_007'].format(len(self.result['download_error']) if 'download_error' in self.result else 0))
+        print(INFO_MESSAGE['common_info_008'].format(len(self.result['download_skip']) if 'download_skip' in self.result else 0))
+        return self.result
 
 
 if __name__ == '__main__':
