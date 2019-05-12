@@ -6,6 +6,30 @@ from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT
 from common.CommonConst import INFO_MESSAGE, ERROR_MESSAGE
 
 class SearchGoogleClass(SearchBaseClass.ImageClass):
+    def query_gen(self, site, keyword):
+        """検索用のURLを作成する
+        
+        Arguments:
+            site {str} -- 検索サイト
+            keyword {str} -- 検索キーワード
+        
+        Yields:
+            str -- 作成したURL
+        """
+        # 'q':keyword,      検索キーワード
+        # 'tbm':'isch',     検索種類(isch=画像検索)
+        # 'tbs':'sur:fc',   ライセンス指定(sur:fc=再使用が許可された画像)
+        # 'ijn':str(page)   指定したページを表示する
+        while True:
+            params = urllib.parse.urlencode({
+                'q':keyword,
+                'tbm':'isch',
+                # 'tbs':'sur:fc',
+                'ijn':str(self.page)})
+            self.page += 1
+            yield SEARCH_URL[site] + '?' + params
+            time.sleep(1)
+    
     def get_url_list(self, query_gen):
         """検索エンジンからURLのリストを取得する
         

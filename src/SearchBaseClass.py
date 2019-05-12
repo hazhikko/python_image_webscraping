@@ -56,20 +56,12 @@ class ImageClass:
         
         Yields:
             str -- 作成したURL
+        
+        Note:
+            子クラス側で設定する
         """
-        # 'q':keyword,      検索キーワード
-        # 'tbm':'isch',     検索種類(isch=画像検索)
-        # 'tbs':'sur:fc',   ライセンス指定(sur:fc=再使用が許可された画像)
-        # 'ijn':str(page)   指定したページを表示する
         while True:
-            params = urllib.parse.urlencode({
-                'q':keyword,
-                'tbm':'isch',
-                # 'tbs':'sur:fc',
-                'ijn':str(self.page)})
-            self.page += 1
-            yield SEARCH_URL[site] + '?' + params
-            time.sleep(1)
+            yield ''
     
     def get_url_list(self, query_gen):
         """検索エンジンからURLのリストを取得する
