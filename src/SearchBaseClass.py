@@ -35,8 +35,8 @@ class ImageClass:
         if site not in SEARCH_URL:
             print(ERROR_MESSAGE['common_err_004'])
             site = 'google'
+        query = self.query_gen(site, keyword)
         while True:
-            query = self.query_gen(site, keyword)
             url_list = self.image_search(query, maximum)
             self.download_file(keyword, url_list)
             if not self.retry_flg:

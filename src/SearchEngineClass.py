@@ -26,8 +26,8 @@ class SearchGoogleClass(SearchBaseClass.ImageClass):
                 'tbm':'isch',
                 # 'tbs':'sur:fc',
                 'ijn':str(self.page)})
-            self.page += 1
             yield SEARCH_URL[site] + '?' + params
+            self.page += 1
             time.sleep(1)
     
     def get_url_list(self, query_gen):
@@ -46,8 +46,10 @@ class SearchGoogleClass(SearchBaseClass.ImageClass):
         return [js['ou'] for js in jsons]
 
 class SearchBingClass(SearchBaseClass.ImageClass):
-    item_count = 0
-    item = 0
+    def __init__(self):
+        super(SearchBingClass, self).__init__()
+        self.item_count = 0
+        self.item = 0
 
     def query_gen(self, site, keyword):
         """検索用のURLを作成する
@@ -67,8 +69,8 @@ class SearchBingClass(SearchBaseClass.ImageClass):
                 'q':keyword,
                 # 'qft':'+filterui:license-L1',
                 'first':str(self.item)})
-            self.item += self.item_count
             yield SEARCH_URL[site] + '?' + params
+            self.item += len(self.result['download']) + len(self.result['download_error']) + len(self.result['download_skip']) + 1
             time.sleep(1)
     
     def get_url_list(self, query_gen):
