@@ -13,8 +13,10 @@ class ImageClass:
         self.site = ''
         self.keyword = ''
         self.maximum = 0
+        self.require = 0
         self.page = 0
         self.result = {}
+        self.retry_flg = False
     
     def search(self, site, keyword, maximum):
         """画像の検索とダウンロード処理を行う
@@ -29,13 +31,21 @@ class ImageClass:
         """
         self.site = site
         self.keyword = keyword
-        self.maximum = maximum
+        self.maximum = self.require = maximum
         if site not in SEARCH_URL:
             print(ERROR_MESSAGE['common_err_004'])
             site = 'google'
-        query = self.query_gen(site, keyword)
-        url_list = self.image_search(query, maximum)
-        return self.download_file(keyword, url_list)
+        while True:
+            query = self.query_gen(site, keyword)
+            url_list = self.image_search(query, maximum)
+            self.download_file(keyword, url_list)
+            if not self.retry_flg:
+                break
+        print(INFO_MESSAGE['common_info_004'])
+        print(INFO_MESSAGE['common_info_006'].format(len(self.result['download']) if 'download' in self.result else 0))
+        print(INFO_MESSAGE['common_info_007'].format(len(self.result['download_error']) if 'download_error' in self.result else 0))
+        print(INFO_MESSAGE['common_info_008'].format(len(self.result['download_skip']) if 'download_skip' in self.result else 0))
+        return self.result
     
     def query_gen(self, site, keyword):
         """検索用のURLを作成する
@@ -83,7 +93,6 @@ class ImageClass:
 
             # 取得枚数がmaximumに達するまでクエリを再作成して取得を繰り返す
             if not len(imageURLs):
-                print(INFO_MESSAGE['common_info_010'])
                 return []
             else:
                 # URLの形式をチェックする
@@ -99,7 +108,7 @@ class ImageClass:
                         delete_list.append(url)
                 if len(delete_list):
                     [imageURLs.remove(del_url) for del_url in delete_list]
-                if len(imageURLs) > maximum - total:
+                if len(imageURLs) > self.require - total:
                     result += imageURLs
                     break
                 else:
@@ -208,7 +217,7 @@ class ImageClass:
             print(INFO_MESSAGE['common_info_010'])
             return False
         # ダウンロード成功数が取得枚数に到達
-        if 'download' in self.result and len(self.result['download']) == self.maximum:
+        if 'download' in self.result and len(self.result['download']) >= self.maximum:
             return False
         # 保存先のディスクの空き容量が基準値以下
         if self.check_disk_usage(save_dir)[0] < DISK_FREE_REFERENCE_VALUE:
@@ -301,20 +310,18 @@ class ImageClass:
                 continue
         # 取得する画像がない場合は終了する
         if not self.check_download_continue(url_list, save_dir):
-            pass
+            self.retry_flg = False
         # ダウンロード成功数が足りなければリトライする
         elif 'download' in self.result and len(self.result['download']) < self.maximum:
             print(INFO_MESSAGE['common_info_009'])
-            self.maximum = self.maximum - len(self.result['download'])
-            self.search(self.site, self.keyword, self.maximum)
+            self.retry_flg = True
+            self.require = self.maximum - len(self.result['download'])
+            # self.search(self.site, self.keyword, self.maximum)
         elif 'download' not in self.result:
-            self.search(self.site, self.keyword, self.maximum)
+            self.retry_flg = True
+            # self.search(self.site, self.keyword, self.maximum)
         else:
-            pass
-        print(INFO_MESSAGE['common_info_004'])
-        print(INFO_MESSAGE['common_info_006'].format(len(self.result['download']) if 'download' in self.result else 0))
-        print(INFO_MESSAGE['common_info_007'].format(len(self.result['download_error']) if 'download_error' in self.result else 0))
-        print(INFO_MESSAGE['common_info_008'].format(len(self.result['download_skip']) if 'download_skip' in self.result else 0))
+            self.retry_flg = False
         return self.result
 
 
