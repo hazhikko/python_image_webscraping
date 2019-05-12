@@ -31,6 +31,7 @@ INFO_MESSAGE = {
     'common_info_008':'重複画像:{0}件',
     'common_info_009':'取得画像が足りないため、再検索します',
     'common_info_010':'検索結果が0件だったため、処理を終了します',
+    'common_info_011':'ダウンロード {0}/{1}',
 }
 ERROR_MESSAGE = {
     'common_err_001':'画像以外のファイルです',
