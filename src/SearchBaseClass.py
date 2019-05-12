@@ -278,7 +278,8 @@ class ImageClass:
                     # ファイルをローカルに保存
                     with open(fPath, mode = 'wb') as f:
                         f.write(response.content)
-                        self.result.setdefault('download', []).append(fPath)
+                    self.result.setdefault('download', []).append(fPath)
+                    print(INFO_MESSAGE['common_info_011'].format(len(self.result['download']), self.maximum))
             except requests.exceptions.ConnectTimeout:
                 print(ERROR_MESSAGE['common_err_003'])
                 self.result.setdefault('download_error', []).append(url)
