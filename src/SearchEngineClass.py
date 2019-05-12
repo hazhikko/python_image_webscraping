@@ -6,7 +6,20 @@ from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT
 from common.CommonConst import INFO_MESSAGE, ERROR_MESSAGE
 
 class SearchGoogleClass(SearchBaseClass.ImageClass):
-    pass
+    def get_url_list(self, query_gen):
+        """検索エンジンからURLのリストを取得する
+        
+        Arguments:
+            query_gen {object} -- query_genで作成したジェネレータ
+        
+        Retruens:
+            list -- urlのリスト
+        """
+        html = self.session.get(next(query_gen), proxies = PROXIES, timeout = CONNECT_TIMEOUT).text
+        soup = BeautifulSoup(html, 'lxml')
+        elements = soup.select('.rg_meta.notranslate')
+        jsons = [json.loads(e.get_text()) for e in elements]
+        return [js['ou'] for js in jsons]
 
 class SearchBingClass(SearchBaseClass.ImageClass):
     item_count = 0
@@ -34,38 +47,20 @@ class SearchBingClass(SearchBaseClass.ImageClass):
             yield SEARCH_URL[site] + '?' + params
             time.sleep(1)
     
-    def image_search(self, query_gen, maximum):
-        """検索サイトで画像を検索し、画像のURLを収集する
+    def get_url_list(self, query_gen):
+        """検索エンジンからURLのリストを取得する
         
         Arguments:
             query_gen {object} -- query_genで作成したジェネレータ
-            maximum {int} -- 取得したい画像の数
         
-        Returns:
-            list -- 画像URLのリスト
+        Retruens:
+            list -- urlのリスト
         """
-        print(INFO_MESSAGE['common_info_001'])
-        result = []
-        total = 0
-        while True:
-            html = self.session.get(next(query_gen), proxies = PROXIES, timeout = CONNECT_TIMEOUT).text
-            soup = BeautifulSoup(html, 'lxml')
-            elements = soup.select('a.iusc')
-            jsons = [json.loads(e['m']) for e in elements]
-            imageURLs = [js['murl'] for js in jsons]
-
-            self.item_count = len(imageURLs)
-            if not len(imageURLs):
-                print(ERROR_MESSAGE['common_err_006'])
-                sys.exit()
-            elif len(imageURLs) > maximum - total:
-                result += imageURLs
-                break
-            else:
-                result += imageURLs
-                total += len(imageURLs)
-        print(INFO_MESSAGE['common_info_002'])
-        return result
+        html = self.session.get(next(query_gen), proxies = PROXIES, timeout = CONNECT_TIMEOUT).text
+        soup = BeautifulSoup(html, 'lxml')
+        elements = soup.select('a.iusc')
+        jsons = [json.loads(e['m']) for e in elements]
+        return [js['murl'] for js in jsons]
 
 
 if __name__ == '__main__':

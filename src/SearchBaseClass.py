@@ -71,6 +71,20 @@ class ImageClass:
             yield SEARCH_URL[site] + '?' + params
             time.sleep(1)
     
+    def get_url_list(self, query_gen):
+        """検索エンジンからURLのリストを取得する
+        
+        Arguments:
+            query_gen {object} -- query_genで作成したジェネレータ
+        
+        Retruens:
+            list -- urlのリスト
+        
+        Note:
+            子クラス側で設定する
+        """
+        return []
+
     def image_search(self, query_gen, maximum):
         """検索サイトで画像を検索し、画像のURLを収集する
         
@@ -85,12 +99,7 @@ class ImageClass:
         result = []
         total = 0
         while True:
-            html = self.session.get(next(query_gen), proxies = PROXIES, timeout = CONNECT_TIMEOUT).text
-            soup = BeautifulSoup(html, 'lxml')
-            elements = soup.select('.rg_meta.notranslate')
-            jsons = [json.loads(e.get_text()) for e in elements]
-            imageURLs = [js['ou'] for js in jsons]
-
+            imageURLs = self.get_url_list(query_gen)
             # 取得枚数がmaximumに達するまでクエリを再作成して取得を繰り返す
             if not len(imageURLs):
                 return []
