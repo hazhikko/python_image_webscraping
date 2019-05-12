@@ -35,8 +35,8 @@ class ImageClass:
         if site not in SEARCH_URL:
             print(ERROR_MESSAGE['common_err_004'])
             site = 'google'
+        query = self.query_gen(site, keyword)
         while True:
-            query = self.query_gen(site, keyword)
             url_list = self.image_search(query, maximum)
             self.download_file(keyword, url_list)
             if not self.retry_flg:
@@ -56,21 +56,27 @@ class ImageClass:
         
         Yields:
             str -- 作成したURL
+        
+        Note:
+            子クラス側で設定する
         """
-        # 'q':keyword,      検索キーワード
-        # 'tbm':'isch',     検索種類(isch=画像検索)
-        # 'tbs':'sur:fc',   ライセンス指定(sur:fc=再使用が許可された画像)
-        # 'ijn':str(page)   指定したページを表示する
         while True:
-            params = urllib.parse.urlencode({
-                'q':keyword,
-                'tbm':'isch',
-                # 'tbs':'sur:fc',
-                'ijn':str(self.page)})
-            self.page += 1
-            yield SEARCH_URL[site] + '?' + params
-            time.sleep(1)
+            yield ''
     
+    def get_url_list(self, query_gen):
+        """検索エンジンからURLのリストを取得する
+        
+        Arguments:
+            query_gen {object} -- query_genで作成したジェネレータ
+        
+        Retruens:
+            list -- urlのリスト
+        
+        Note:
+            子クラス側で設定する
+        """
+        return []
+
     def image_search(self, query_gen, maximum):
         """検索サイトで画像を検索し、画像のURLを収集する
         
@@ -85,12 +91,7 @@ class ImageClass:
         result = []
         total = 0
         while True:
-            html = self.session.get(next(query_gen), proxies = PROXIES, timeout = CONNECT_TIMEOUT).text
-            soup = BeautifulSoup(html, 'lxml')
-            elements = soup.select('.rg_meta.notranslate')
-            jsons = [json.loads(e.get_text()) for e in elements]
-            imageURLs = [js['ou'] for js in jsons]
-
+            imageURLs = self.get_url_list(query_gen)
             # 取得枚数がmaximumに達するまでクエリを再作成して取得を繰り返す
             if not len(imageURLs):
                 return []
@@ -132,36 +133,28 @@ class ImageClass:
         used_percentage = 100 - free_percentage
         return [free_percentage, used_percentage]
 
-    def check_redundant_image(self, tmp_image, save_dir):
+    def check_redundant_image(self, tmp_image, ext, save_dir):
         """ダウンロードした画像と同じ画像があるかチェックする
         
         Arguments:
-            tmp_image {str} -- 一時ディレクトリにダウンロードした画像のパス
+            tmp_image {object} -- 画像URLのresponse.content
             save_dir {str} -- 重複チェックを行うディレクトリのパス
         
         Returns:
             str -- 重複画像が保存されているパス/該当がなければ空文字
         """
-        flg = True
         redundant_image_path = ''
-        target = open(tmp_image, 'rb').read()
-        target_md5 = hashlib.md5(target).hexdigest()
-        files = glob.glob(save_dir + '/*' + os.path.splitext(tmp_image)[1])
+        target_md5 = hashlib.md5(tmp_image).hexdigest()
+        files = glob.glob(save_dir + '/*' + ext)
         # それぞれの画像のhash値を比較する
-        # 重複した場合は画像を削除する
         if len(files) > 0:
             for file in files:
                 with open(file, 'rb') as image:
                     image_data = image.read()
                     image_md5 = hashlib.md5(image_data).hexdigest()
                     if image_md5 == target_md5:
-                        flg = False
                         redundant_image_path = file.replace('\\', '/')
                         break
-        if flg:
-            shutil.move(tmp_image, save_dir)
-        else:
-            os.remove(tmp_image)
         return redundant_image_path
     
     def get_file_num(self, save_dir):
@@ -242,10 +235,8 @@ class ImageClass:
         print(INFO_MESSAGE['common_info_003'])
         keyword = keyword.replace(' ', '_').replace('　', '_')
         save_dir = DATA_DIR + '/' + keyword
-        tmp_dir = DATA_DIR + '/' + 'tmp'
         os.makedirs(DATA_DIR, exist_ok=True)
         os.makedirs(save_dir, exist_ok=True)
-        os.makedirs(tmp_dir, exist_ok=True)
 
         domain = ''
         for i, url in enumerate(url_list):
@@ -262,7 +253,6 @@ class ImageClass:
             # ファイル名とパスを作成
             fName = os.path.basename(url)
             fPath = save_dir + '/' + str(num).zfill(5) + os.path.splitext(fName)[1]
-            tmpPath = tmp_dir + '/' + str(num).zfill(5) + os.path.splitext(fName)[1]
             try:
                 # 同じドメインからURLを取得する場合はスリープ
                 if domain == '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url)):
@@ -279,16 +269,18 @@ class ImageClass:
                     e = TypeError("Content-Type: " + content_type)
                     raise e
                 
-                # ファイルをローカルに保存
-                with open(tmpPath, mode = 'wb') as f:
-                    f.write(response.content)
                 # 同じファイルがあればスキップする
-                skip_file = self.check_redundant_image(tmpPath, save_dir)
+                skip_file = self.check_redundant_image(response.content, os.path.splitext(fName)[1], save_dir)
                 if skip_file != '':
                     print(ERROR_MESSAGE['common_err_002'])
                     self.result.setdefault('download_skip', []).append(skip_file)
                     continue
-                self.result.setdefault('download', []).append(fPath)
+                else:
+                    # ファイルをローカルに保存
+                    with open(fPath, mode = 'wb') as f:
+                        f.write(response.content)
+                    self.result.setdefault('download', []).append(fPath)
+                    print(INFO_MESSAGE['common_info_011'].format(len(self.result['download']), self.maximum))
             except requests.exceptions.ConnectTimeout:
                 print(ERROR_MESSAGE['common_err_003'])
                 self.result.setdefault('download_error', []).append(url)
