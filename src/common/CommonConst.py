@@ -32,6 +32,7 @@ INFO_MESSAGE = {
     'common_info_009':'取得画像が足りないため、再検索します',
     'common_info_010':'検索結果が0件だったため、処理を終了します',
     'common_info_011':'ダウンロード {0}/{1}',
+    'common_info_012':'処理を中断します',
 }
 ERROR_MESSAGE = {
     'common_err_001':'画像以外のファイルです',

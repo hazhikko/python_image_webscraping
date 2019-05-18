@@ -293,6 +293,10 @@ class ImageClass:
                 print(ERROR_MESSAGE['common_err_001'])
                 self.result.setdefault('download_error', []).append(url)
                 continue
+            except KeyboardInterrupt:
+                print(INFO_MESSAGE['common_info_012'])
+                self.retry_flg = False
+                return self.result
             except:
                 print(ERROR_MESSAGE['common_err_999'])
                 self.result.setdefault('download_error', []).append(url)
