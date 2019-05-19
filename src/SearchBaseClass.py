@@ -18,7 +18,11 @@ class ImageClass:
         self.maximum = 0
         self.require = 0
         self.page = 0
-        self.result = {}
+        self.result = {
+            'download':[],
+            'download_error':[],
+            'download_skip':[]
+        }
         self.retry_flg = False
         self.db = DbClass(DB['db_path'])
     
