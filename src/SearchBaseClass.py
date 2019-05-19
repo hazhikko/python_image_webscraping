@@ -1,10 +1,13 @@
 # coding: utf-8
 import os, os.path, sys, json, glob, urllib, urllib.robotparser, pprint, glob, hashlib, shutil, time
+import datetime
 import requests
 from requests.exceptions import Timeout
 from bs4 import BeautifulSoup
-from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT, DATA_DIR, DISK_FREE_REFERENCE_VALUE
+from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT, DATA_DIR, DISK_FREE_REFERENCE_VALUE, DB
 from common.CommonConst import INFO_MESSAGE, ERROR_MESSAGE
+from ErrorClass import SqlError
+from SqliteClass import DbClass
 
 class ImageClass:
     def __init__(self):
@@ -17,6 +20,7 @@ class ImageClass:
         self.page = 0
         self.result = {}
         self.retry_flg = False
+        self.db = DbClass(DB['db_path'])
     
     def search(self, site, keyword, maximum):
         """画像の検索とダウンロード処理を行う
@@ -96,13 +100,33 @@ class ImageClass:
             if not len(imageURLs):
                 return []
             else:
+                domain_lsit = []
+                dounloaded_lsit = []
+                try:
+                    # ドメインリストを取得する
+                    query = 'select domain from ineligible_domain;'
+                    domain_lsit = [d[0] for d in self.db.sql_execute(query)]
+                    # ダウンロード済みURLリストを取得する
+                    query = 'select url from downloaded_list;'
+                    dounloaded_lsit = [d[0] for d in self.db.sql_execute(query)]
+                except SqlError:
+                    pass
+                except:
+                    pass
                 # URLの形式をチェックする
                 delete_list = []
                 for i, url in enumerate(imageURLs):
                     # パラメータがついている場合は削除する
                     split_url = url.split('?')[0]
                     ext = os.path.splitext(split_url)[1][1:]
-                    if any(ext == s for s in IMG_EXT):
+                    domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
+                    if domain in domain_lsit:
+                        # 接続禁止ドメインリストに該当した場合リストから削除する
+                        delete_list.append(url)
+                    elif url in dounloaded_lsit:
+                        # ダウンロード済みのURLだった場合リストから削除する
+                        delete_list.append(url)
+                    elif any(ext == s for s in IMG_EXT):
                         imageURLs[i] = split_url
                     else:
                         # 画像ではない場合リストから削除する
@@ -191,7 +215,18 @@ class ImageClass:
             rp = urllib.robotparser.RobotFileParser()
             rp.set_url(robot_url)
             rp.read()
-            return rp.can_fetch('*', url)
+            if rp.can_fetch('*', url):
+                return True
+            else:
+                # スクレイピング禁止の場合はDBに追加する
+                query = '''select count(domain) from ineligible_domain where domain='{0}';'''.format(domain)
+                if self.db.sql_execute(query)[0][0] == 0:
+                    query = DB['ineligible_domain']['insert']
+                    data = (domain, 1, DB['date'].format(datetime.datetime.now()))
+                    self.db.sql_execute(query, data=data)
+                    return False
+        except SqlError:
+            pass
         except:
             return False
     
@@ -281,6 +316,10 @@ class ImageClass:
                         f.write(response.content)
                     self.result.setdefault('download', []).append(fPath)
                     print(INFO_MESSAGE['common_info_011'].format(len(self.result['download']), self.maximum))
+                    # ダウンロード済みリストに追加
+                    query = DB['downloaded_list']['insert']
+                    data = (url, DB['date'].format(datetime.datetime.now()))
+                    self.db.sql_execute(query, data=data)
             except requests.exceptions.ConnectTimeout:
                 print(ERROR_MESSAGE['common_err_003'])
                 self.result.setdefault('download_error', []).append(url)
@@ -293,6 +332,8 @@ class ImageClass:
                 print(ERROR_MESSAGE['common_err_001'])
                 self.result.setdefault('download_error', []).append(url)
                 continue
+            except SqlError:
+                pass
             except KeyboardInterrupt:
                 print(INFO_MESSAGE['common_info_012'])
                 self.retry_flg = False
@@ -312,10 +353,8 @@ class ImageClass:
             print(INFO_MESSAGE['common_info_009'])
             self.retry_flg = True
             self.require = self.maximum - len(self.result['download'])
-            # self.search(self.site, self.keyword, self.maximum)
         elif 'download' not in self.result:
             self.retry_flg = True
-            # self.search(self.site, self.keyword, self.maximum)
         else:
             self.retry_flg = False
         return self.result
