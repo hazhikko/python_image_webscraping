@@ -52,14 +52,10 @@ class DbClass(SqliteClass):
         """
         try:
             # ドメインリスト
-            query = DB['ineligible_domain']['check_table']
-            if not len(self.sql_execute(query)):
-                query = DB['ineligible_domain']['create_table']
-                self.sql_execute(query)
+            query = DB['ineligible_domain']['create_table']
+            self.sql_execute(query)
             # ダウンロード済みリスト
-            query = DB['downloaded_list']['check_table']
-            if not len(self.sql_execute(query)):
-                query = DB['downloaded_list']['create_table']
-                self.sql_execute(query)
+            query = DB['downloaded_list']['create_table']
+            self.sql_execute(query)
         except sqlite3.Error as e:
             raise SqlError(ERROR_MESSAGE['common_err_006'].format(e.args[0]))

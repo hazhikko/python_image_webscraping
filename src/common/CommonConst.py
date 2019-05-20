@@ -24,13 +24,11 @@ DB = {
     'db_path':os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/../db/db.sqlite').replace('\\', '/'),
     'date':'{0:%Y%m%d%H%M%S}',
     'ineligible_domain':{
-        'check_table':'''select name from sqlite_master where type='table' and name='ineligible_domain';''',
-        'create_table':'''create table ineligible_domain (id int PRIMARY KEY, domain varchar, category int, insert_date varchar);''',
+        'create_table':'''create table if not exists ineligible_domain (id int PRIMARY KEY, domain varchar, category int, insert_date varchar);''',
         'insert':'insert into ineligible_domain (domain, category, insert_date) values (?,?,?);'
     },
     'downloaded_list':{
-        'check_table':'''select name from sqlite_master where type='table' and name='downloaded_list';''',
-        'create_table':'''create table downloaded_list (id int PRIMARY KEY, url varchar, insert_date varchar)''',
+        'create_table':'''create table if not exists downloaded_list (id int PRIMARY KEY, url varchar, insert_date varchar)''',
         'insert':'insert into downloaded_list (url, insert_date) values (?,?)'
     }
 }
