@@ -19,7 +19,7 @@ UA = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 IMG_EXT = ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'tiff']
 # WindowsとUnixでセパレータが異なるため、/で統一する
 DATA_DIR = os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/../../download/image').replace('\\', '/')
-DISK_FREE_REFERENCE_VALUE = 20
+DISK_FREE_REFERENCE_VALUE = 10
 DB = {
     'db_path':os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/../db/db.sqlite').replace('\\', '/'),
     'date':'{0:%Y%m%d%H%M%S}',
