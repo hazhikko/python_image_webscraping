@@ -23,12 +23,15 @@ class SqliteClass:
         """SQLを実行する
         
         Arguments:
-            query {[type]} -- [description]
+            query {str} -- 実行するquery
         
         Keyword Arguments:
-            data {[type]} -- [description] (default: {None})
+            data {List} -- queryに付随するデータ
         
-        Retruens:
+        Raises:
+            SqlError -- SQLite実行時にエラーが発生した場合
+        
+        Returns:
             List -- 実行結果をLISTに変換したもの
         """
         try:
@@ -52,14 +55,10 @@ class DbClass(SqliteClass):
         """
         try:
             # ドメインリスト
-            query = DB['ineligible_domain']['check_table']
-            if not len(self.sql_execute(query)):
-                query = DB['ineligible_domain']['create_table']
-                self.sql_execute(query)
+            query = DB['ineligible_domain']['create_table']
+            self.sql_execute(query)
             # ダウンロード済みリスト
-            query = DB['downloaded_list']['check_table']
-            if not len(self.sql_execute(query)):
-                query = DB['downloaded_list']['create_table']
-                self.sql_execute(query)
+            query = DB['downloaded_list']['create_table']
+            self.sql_execute(query)
         except sqlite3.Error as e:
             raise SqlError(ERROR_MESSAGE['common_err_006'].format(e.args[0]))
