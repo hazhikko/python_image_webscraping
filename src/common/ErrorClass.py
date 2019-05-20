@@ -7,3 +7,7 @@ class CommonError(Exception):
 class SqlError(CommonError):
     """SQL実行時にエラーが発生した場合に投げるエラー
     """
+
+class VirustotalError(CommonError):
+    """Virustotal実行時にエラーが発生した場合に投げるエラー
+    """

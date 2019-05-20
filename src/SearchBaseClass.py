@@ -4,10 +4,11 @@ import datetime
 import requests
 from requests.exceptions import Timeout
 from bs4 import BeautifulSoup
-from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT, DATA_DIR, DISK_FREE_REFERENCE_VALUE, DB
+from common.CommonConst import PROXIES, CONNECT_TIMEOUT, SEARCH_URL, UA, IMG_EXT, DATA_DIR, DISK_FREE_REFERENCE_VALUE, DB, VIRUSTOTAL
 from common.CommonConst import INFO_MESSAGE, ERROR_MESSAGE
 from ErrorClass import SqlError
 from SqliteClass import DbClass
+from VirustotalClass import VirustotalClass
 
 class ImageClass:
     def __init__(self):
@@ -110,8 +111,11 @@ class ImageClass:
                     # ドメインリストを取得する
                     query = 'select domain from ineligible_domain;'
                     domain_lsit = [d[0] for d in self.db.sql_execute(query)]
+                    # ウイルススキャン済みかつ未ダウンロードのURLリストを取得する
+                    query = 'select url from downloaded_list where category=0;'
+                    scanned_lsit = [d[0] for d in self.db.sql_execute(query)]
                     # ダウンロード済みURLリストを取得する
-                    query = 'select url from downloaded_list;'
+                    query = 'select url from downloaded_list where category=1;'
                     dounloaded_lsit = [d[0] for d in self.db.sql_execute(query)]
                 except SqlError:
                     pass
@@ -119,30 +123,46 @@ class ImageClass:
                     pass
                 # URLの形式をチェックする
                 delete_list = []
-                for i, url in enumerate(imageURLs):
-                    # パラメータがついている場合は削除する
-                    split_url = url.split('?')[0]
-                    ext = os.path.splitext(split_url)[1][1:]
-                    domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
-                    if domain in domain_lsit:
-                        # 接続禁止ドメインリストに該当した場合リストから削除する
-                        delete_list.append(url)
-                    elif url in dounloaded_lsit:
-                        # ダウンロード済みのURLだった場合リストから削除する
-                        delete_list.append(url)
-                    elif any(ext == s for s in IMG_EXT):
-                        imageURLs[i] = split_url
+                Virustotal = VirustotalClass()
+                try:
+                    for i, url in enumerate(imageURLs):
+                        # パラメータがついている場合は削除する
+                        split_url = url.split('?')[0]
+                        ext = os.path.splitext(split_url)[1][1:]
+                        domain = '{uri.scheme}://{uri.netloc}/'.format(uri = urllib.parse.urlparse(url))
+                        if domain in domain_lsit:
+                            # 接続禁止ドメインリストに該当した場合リストから削除する
+                            delete_list.append(url)
+                        elif url in dounloaded_lsit:
+                            # ダウンロード済みのURLだった場合リストから削除する
+                            delete_list.append(url)
+                        elif url in scanned_lsit:
+                            # ウイルススキャン済みかつ未ダウンロードだった場合リストに追加する
+                            imageURLs[i] = split_url
+                        elif any(ext == s for s in IMG_EXT):
+                            if VIRUSTOTAL['apikey'] != '':
+                                if Virustotal.virus_scan(self.session, split_url):
+                                    # ウイルススキャンで陽性だった場合リストから削除する
+                                    delete_list.append(url)
+                                else:
+                                    imageURLs[i] = split_url
+                            else:
+                                imageURLs[i] = split_url
+                        else:
+                            # 画像ではない場合リストから削除する
+                            delete_list.append(url)
+                    if len(delete_list):
+                        [imageURLs.remove(del_url) for del_url in delete_list]
+                    if len(imageURLs) > self.require - total:
+                        result += imageURLs
+                        break
                     else:
-                        # 画像ではない場合リストから削除する
-                        delete_list.append(url)
-                if len(delete_list):
-                    [imageURLs.remove(del_url) for del_url in delete_list]
-                if len(imageURLs) > self.require - total:
-                    result += imageURLs
-                    break
-                else:
-                    result += imageURLs
-                    total += len(imageURLs)
+                        result += imageURLs
+                        total += len(imageURLs)
+                except KeyboardInterrupt:
+                    print(INFO_MESSAGE['common_info_012'])
+                    self.retry_flg = False
+                    return self.result
         print(INFO_MESSAGE['common_info_002'])
         return result
     
@@ -321,8 +341,16 @@ class ImageClass:
                     self.result.setdefault('download', []).append(fPath)
                     print(INFO_MESSAGE['common_info_011'].format(len(self.result['download']), self.maximum))
                     # ダウンロード済みリストに追加
-                    query = DB['downloaded_list']['insert']
-                    data = (url, DB['date'].format(datetime.datetime.now()))
+                    query = 'select url from downloaded_list where category=0;'
+                    scanned_lsit = [d[0] for d in self.db.sql_execute(query)]
+                    if url in scanned_lsit:
+                        # ダウンロード済みに変更
+                        query = '''update downloaded_list set category=? where url=?;'''
+                        data = (1, url)
+                    else:
+                        # 新規追加
+                        query = DB['ineligible_domain']['insert']
+                        data = (url, 1, DB['date'].format(datetime.datetime.now()))
                     self.db.sql_execute(query, data=data)
             except requests.exceptions.ConnectTimeout:
                 print(ERROR_MESSAGE['common_err_003'])
