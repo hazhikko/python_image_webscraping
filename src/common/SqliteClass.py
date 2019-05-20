@@ -23,12 +23,15 @@ class SqliteClass:
         """SQLを実行する
         
         Arguments:
-            query {[type]} -- [description]
+            query {str} -- 実行するquery
         
         Keyword Arguments:
-            data {[type]} -- [description] (default: {None})
+            data {List} -- queryに付随するデータ
         
-        Retruens:
+        Raises:
+            SqlError -- SQLite実行時にエラーが発生した場合
+        
+        Returns:
             List -- 実行結果をLISTに変換したもの
         """
         try:
