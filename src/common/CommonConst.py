@@ -25,11 +25,11 @@ DB = {
     'date':'{0:%Y%m%d%H%M%S}',
     'ineligible_domain':{
         'create_table':'''create table if not exists ineligible_domain (id int PRIMARY KEY, domain varchar, category int, insert_date varchar);''',
-        'insert':'insert into ineligible_domain (domain, category, insert_date) values (?,?,?);'
+        'insert':'insert into ineligible_domain (domain, category, insert_date) values (?,?,?);',
     },
     'downloaded_list':{
-        'create_table':'''create table if not exists downloaded_list (id int PRIMARY KEY, url varchar, insert_date varchar)''',
-        'insert':'insert into downloaded_list (url, insert_date) values (?,?)'
+        'create_table':'''create table if not exists downloaded_list (id int PRIMARY KEY, url varchar, category int, insert_date varchar);''',
+        'insert':'insert into downloaded_list (url, category, insert_date) values (?,?,?);'
     }
 }
 INFO_MESSAGE = {
@@ -45,6 +45,7 @@ INFO_MESSAGE = {
     'common_info_010':'検索結果が0件だったため、処理を終了します',
     'common_info_011':'ダウンロード {0}/{1}',
     'common_info_012':'処理を中断します',
+    'common_info_013':'ウイルススキャン対象:{0},結果:{1}',
 }
 ERROR_MESSAGE = {
     'common_err_001':'画像以外のファイルです',
@@ -55,5 +56,16 @@ ERROR_MESSAGE = {
     'common_err_006':'SQL実行時にエラーが発生しました：{0}',
     'common_err_007':'パラメータが不足しています [検索サイト(google or bing)] [検索キーワード] [取得枚数]',
     'common_err_008':'スクレイピングが禁止されています',
+    'common_err_009':'ウイルススキャン実行時にエラーが発生しました：{0}',
     'common_err_999':'エラーが発生しました'
+}
+# apykey:https://www.virustotal.com/#/join-us で登録後、APIkeyを設定
+# request_limit：有料APIを使用する場合、1分間にリクエスト可能な数を設定
+VIRUSTOTAL = {
+    'apikey':'',
+    'request_limit':4,
+    'url':{
+        'scan':'https://www.virustotal.com/vtapi/v2/url/scan',
+        'report':'https://www.virustotal.com/vtapi/v2/url/report'
+    }
 }
