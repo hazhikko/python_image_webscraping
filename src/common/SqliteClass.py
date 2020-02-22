@@ -4,10 +4,11 @@ import sqlite3
 import ErrorClass
 from common.CommonConst import INFO_MESSAGE, ERROR_MESSAGE, DB
 from ErrorClass import SqlError
-import pprint
+import pprint, os
 
 class SqliteClass:
     def __init__(self, db_path):
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         try:
             self.connect = sqlite3.connect(db_path)
             self.cursor = self.connect.cursor()
